@@ -108,18 +108,48 @@ class Scheduler():
 
     def __init__(self):
         self.ready_list = []
+        self.last_run = None;
 
     # Add a process to the run list
     def add_process(self, process):
-        pass # replace with your code
+        #set the index as the last element of the list at the begining
+        index=len(self.ready_list);
+        #find the first priority that is less than the priority of the process
+        for i in range (0,len(self.ready_list)):
+            if self.ready_list[i].priority<process.priority:
+                index = i
+        #add the item there
+        self.ready_list.insert(index, process)
+        return
+
 
     def remove_process(self, process):
-        pass # replace with your code
+        #do more shit to ensure that all things remain the way they are
+        self.ready_list.remove(process)
 
     # Selects the process with the best priority.
     # If more than one have the same priority these are selected in round-robin fashion.
     def select_process(self):
-        pass # replace with your code
+        #return none if the process list is empty
+        if len(self.ready_list)==0:
+            return None
+        #otherwise check to see if the lastrun process process is the same as the current running process
+        if self.last_run == self.ready_list[0]:
+            #check to see that here are no more processes with the same or higher priority level
+            if(self.last_run.priority<=self.ready_list[1].priority):
+                self.remove_process(self.last_run)
+                self.add_process(self.last_run)
+                #remove the proceess from the list and re-add it ot the back of the queue of processes with the same 
+                #or better priority
+                #RACE CONDITION HERE
+                
+            pass
+        #return the process that is at the head of the queue and move it to the tail of the queue
+        return self.ready_list[0]
+        #readyList[0] is the current running process
+        #check if any process has the same priority level as the first process
+        #if so move the current running process to the correct position
+        #then move the first process with the same priority to the head of the queue and return this value
 
     # Suspends the currently running process by sending it a STOP signal.
     @staticmethod
