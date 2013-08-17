@@ -1,5 +1,6 @@
 
 import sys, os, signal, time, threading
+from multiprocessing import Semaphore
 
 
 # These functions are to be scheduled and run in separate real processes.
@@ -108,18 +109,36 @@ class Scheduler():
 
     def __init__(self):
         self.ready_list = []
-        self.last_run = None;
+        self.last_run = None;\
+        self.semafore=Semaphore(1);
 
     # Add a process to the run list
     def add_process(self, process):
         #set the index as the last element of the list at the begining
-        index=len(self.ready_list);
+        #RACE condition here!!
+        '''
+        Say a process with priority 1 comes into the ready_list with 5 elements
+        The ready_list priorities are as shown
+        ready_list_priorities={10,8,8,6,4}
+        the index=len(self.ready_list) line executes
+        and gets the value 5. This means index =5
+        then say before the next line is executed, another process  is added to the ready_list, its priority is 3
+        then ready_list_priorities={10,8,8,6,4,3}
+        but index is still 5 so new process will be inserted here rather than at the end of the list
+        so ready_list_priorities={10,8,8,6,4,1,3}
+        this is incorrect
+        we must lock this method and only allow one process to access it at a time
+        maybe with a semaphore
+        '''
+        self.semafore.acquire()
+        index=len(self.ready_list)
         #find the first priority that is less than the priority of the process
         for i in range (0,len(self.ready_list)):
             if self.ready_list[i].priority<process.priority:
                 index = i
         #add the item there
         self.ready_list.insert(index, process)
+        self.semafore.release()
         return
 
 
@@ -133,23 +152,24 @@ class Scheduler():
         #return none if the process list is empty
         if len(self.ready_list)==0:
             return None
+        
         #otherwise check to see if the lastrun process process is the same as the current running process
         if self.last_run == self.ready_list[0]:
-            #check to see that here are no more processes with the same or higher priority level
-            if(self.last_run.priority<=self.ready_list[1].priority):
-                self.remove_process(self.last_run)
-                self.add_process(self.last_run)
-                #remove the proceess from the list and re-add it ot the back of the queue of processes with the same 
-                #or better priority
-                #RACE CONDITION HERE
+            #make sure the list doesnt contain only one process
+            if len(self.ready_list)>1:
                 
-            pass
+                #check to see that here are no more processes with the same or higher priority level
+                #because the ready_list is already sorted, we only need to check the next element and check that it is not
+                #of equal or higher priority
+                if(self.last_run.priority<=self.ready_list[1].priority):
+                    #if it is, remove this process from the readylist and put it back in
+                    #This has the effect of placing it behind all the processes with the same priority level as this process
+                    self.remove_process(self.last_run)
+                    self.add_process(self.last_run)
+                
         #return the process that is at the head of the queue and move it to the tail of the queue
+        self.last_run = self.ready_list[0]
         return self.ready_list[0]
-        #readyList[0] is the current running process
-        #check if any process has the same priority level as the first process
-        #if so move the current running process to the correct position
-        #then move the first process with the same priority to the head of the queue and return this value
 
     # Suspends the currently running process by sending it a STOP signal.
     @staticmethod
