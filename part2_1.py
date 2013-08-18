@@ -100,6 +100,7 @@ class Controller():
                         previousPriority = owner.priority
                         previousProcess = owner
                         owner.priority=requesting_process.priority
+                        #reschedule the current process with the higher priority
                         scheduler.remove_process(owner)
                         scheduler.add_process(owner)
                         '''set a flag first to say that a priotiry has been changed
