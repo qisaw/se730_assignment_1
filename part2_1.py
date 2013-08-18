@@ -79,6 +79,8 @@ class Controller():
         priotiyInherited = False
         previousPriority = 0;
         previousProcess=None;
+        numOfTimesRequested=0;
+        print(numOfTimesRequested)
 
         while True:
             input_string = controller_read.readline()
@@ -92,7 +94,15 @@ class Controller():
                 if not owner: # no current owner
                     owner = requesting_process
                     owner.write.write('reply\n')
+                    numOfTimesRequested=1;
+                    #print(numOfTimesRequested)
                 else: # currently owned
+                    '''now we must have a way of checking if the requesting process is the same as the process that first
+                    took hold of the resource'''
+                    if requesting_process==owner:
+                        numOfTimesRequested+=1
+                        #print(numOfTimesRequested)
+                    
                     '''make sure that the old priority value of the process is restored when the high priority 
                     process has ended'''
                     if(owner.priority < requesting_process.priority):
@@ -110,20 +120,26 @@ class Controller():
                     #queue.append(requesting_process)
                     self.insert_to_queue(requesting_process, queue)
             elif message == 'release' and owner == requesting_process:
-                '''if a priority has been inherited, reset that priority and set the 
-                priotiy inherited flag to false'''
-                if priotiyInherited:
-                    previousProcess.priority=previousPriority
-                    priotiyInherited = False
+                '''decrement the value of numOfTimesRequested'''
+                numOfTimesRequested-=1
+                if(numOfTimesRequested ==0):
+                #print(numOfTimesRequested)
+                    '''if a priority has been inherited, reset that priority and set the 
+                    priotiy inherited flag to false'''
+                    if priotiyInherited:
+                        previousProcess.priority=previousPriority
+                        priotiyInherited = False
                     
                 
-                # the first in the queue gets it
-                if len(queue) < 1:
-                    owner = None
-                else:
-                    owner = queue.pop(0)
-                    scheduler.add_process(owner)
-                    owner.write.write('reply\n')
+                    # the first in the queue gets it
+                    if len(queue) < 1:
+                        owner = None
+                    else:
+                        owner = queue.pop(0)
+                        scheduler.add_process(owner)
+                        owner.write.write('reply\n')
+                        numOfTimesRequested+=1
+                    #print(numOfTimesRequested)
             print('owner pid:', owner.pid if owner else None)
     def insert_to_queue(self, process,queue):
         index = len(queue)
