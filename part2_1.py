@@ -271,14 +271,12 @@ scheduler.add_process(low_process)
 threading.Thread(target=scheduler.run).start()
 
 time.sleep(0.5) # give low_process a chance to get going
-low_process1 = SimpleProcess(1, low_func)
-scheduler.add_process(low_process1)
-time.sleep(0.5)
-high_process = SimpleProcess(10, high_func)
-scheduler.add_process(high_process)
 
 mid_process = SimpleProcess(5, mid_func)
 scheduler.add_process(mid_process)
+
+high_process = SimpleProcess(10, high_func)
+scheduler.add_process(high_process)
 
 controller.run()
 
