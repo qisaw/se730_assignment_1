@@ -76,6 +76,8 @@ class Controller():
     def run(self):
         owner = None
         queue = []
+        semafore = threading.Semaphore(1);
+        accessed=0
 
         while True:
             input_string = controller_read.readline()
@@ -89,26 +91,44 @@ class Controller():
                 if not owner: # no current owner
                     owner = requesting_process
                     owner.write.write('reply\n')
+                    accessed +=1
                 else: # currently owned
                     ''' put stuff here to say that if the requesting thread is of a higher priority that the 
                     thread that currently has the resource, up the priority of the thread that currently has the resource
                     then put the high priority thread in the queue.
                     '''
-                    scheduler.remove_process(requesting_process)
-                    queue.append(requesting_process)
-                    if requesting_process.priority >owner.priority:
-                        owner.priority=requesting_process.priority;
-                        scheduler.remove_process(owner)
-                        scheduler.add_process(owner)
+                    if owner != requesting_process:
+                        scheduler.remove_process(requesting_process)
+                        #queue.append(requesting_process)
+                        self.insert_toQueue(requesting_process, queue,semafore)
+                        if requesting_process.priority >owner.priority:
+                            owner.priority=requesting_process.priority;
+                            scheduler.remove_process(owner)
+                            scheduler.add_process(owner)
+                    else:
+                        accessed+=1
+                
             elif message == 'release' and owner == requesting_process:
                 # the first in the queue gets it
-                if len(queue) < 1:
-                    owner = None
-                else:
-                    owner = queue.pop(0)
-                    scheduler.add_process(owner)
-                    owner.write.write('reply\n')
+                accessed -=1
+                if accessed ==0:
+                    if len(queue) < 1:
+                        owner = None
+                    else:
+                        owner = queue.pop(0)
+                        scheduler.add_process(owner)
+                        owner.write.write('reply\n')
             print('owner pid:', owner.pid if owner else None)
+    def insert_toQueue(self, process,queue,semafore):
+        #semafore.acquire()
+        index=len(queue)
+        #find the first priority that is less than the priority of the process
+        for i in range (len(queue)-1,-1,-1):
+            if queue[i].priority<process.priority:
+                index = i
+        #add the item there
+        queue.insert(index, process)
+        #semafore.release()
 
 #===============================================================================
 # The dummy scheduler.
@@ -141,7 +161,7 @@ class Scheduler():
         self.semafore.acquire()
         index=len(self.ready_list)
         #find the first priority that is less than the priority of the process
-        for i in range (0,len(self.ready_list)):
+        for i in range (len(self.ready_list)-1,-1,-1):
             if self.ready_list[i].priority<process.priority:
                 index = i
         #add the item there
@@ -231,7 +251,9 @@ scheduler.add_process(low_process)
 threading.Thread(target=scheduler.run).start()
 
 time.sleep(0.5) # give low_process a chance to get going
-
+low_process1 = SimpleProcess(1, low_func)
+scheduler.add_process(low_process1)
+time.sleep(0.5)
 high_process = SimpleProcess(10, high_func)
 scheduler.add_process(high_process)
 

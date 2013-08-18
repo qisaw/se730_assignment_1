@@ -76,6 +76,9 @@ class Controller():
     def run(self):
         owner = None
         queue = []
+        priotiyInherited = False
+        previousPriority = 0;
+        previousProcess=None;
 
         while True:
             input_string = controller_read.readline()
@@ -90,9 +93,29 @@ class Controller():
                     owner = requesting_process
                     owner.write.write('reply\n')
                 else: # currently owned
+                    '''make sure that the old priority value of the process is restored when the high priority 
+                    process has ended'''
+                    if(owner.priority < requesting_process.priority):
+                        priotiyInherited = True
+                        previousPriority = owner.priority
+                        previousProcess = owner
+                        owner.priority=requesting_process.priority
+                        scheduler.remove_process(owner)
+                        scheduler.add_process(owner)
+                        '''set a flag first to say that a priotiry has been changed
+                        store the prioriy value and the owner of the process
+                        in this case it is owner'''
                     scheduler.remove_process(requesting_process)
-                    queue.append(requesting_process)
+                    #queue.append(requesting_process)
+                    self.insert_to_queue(requesting_process, queue)
             elif message == 'release' and owner == requesting_process:
+                '''if a priority has been inherited, reset that priority and set the 
+                priotiy inherited flag to false'''
+                if priotiyInherited:
+                    previousProcess.priority=previousPriority
+                    priotiyInherited = False
+                    
+                
                 # the first in the queue gets it
                 if len(queue) < 1:
                     owner = None
@@ -101,6 +124,14 @@ class Controller():
                     scheduler.add_process(owner)
                     owner.write.write('reply\n')
             print('owner pid:', owner.pid if owner else None)
+    def insert_to_queue(self, process,queue):
+        index = len(queue)
+        for i in range(len(queue)-1,-1,-1):
+            if (queue[i].priority<process.priority):
+                index=i
+        queue.insert(index,process)
+                
+    
 
 #===============================================================================
 # The dummy scheduler.
